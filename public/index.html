@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Next Sailings — Schedule Search</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--text:#0f172a;--text2:#475569;--text3:#94a3b8;--blue:#0284c7;--blue-bg:#f0f9ff;--blue-border:#bae6fd;--orange:#f59e0b;--orange-bg:#fffbeb;--orange-border:#fde68a;--radius:12px;--green:#16a34a;--msc:#d97706;--msc-bg:#fffbeb;--msc-border:#fde68a;--cma:#e4002b;--cma-bg:#fff1f2;--cma-border:#fecdd3}
+    body{font-family:'DM Sans',-apple-system,sans-serif;background:linear-gradient(180deg,var(--bg) 0%,#e2e8f0 100%);color:var(--text);min-height:100vh}
+    .container{max-width:980px;margin:0 auto;padding:28px 20px}
+    header{text-align:center;margin-bottom:28px}
+    header h1{font-size:28px;font-weight:700;letter-spacing:-0.02em}
+    header p{font-size:13px;color:var(--text3);margin-top:4px}
+    .search-box{background:var(--card);border-radius:16px;padding:22px;box-shadow:0 4px 20px rgba(0,0,0,0.06);margin-bottom:24px}
+    .search-row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+    .port-field{flex:1;min-width:200px;position:relative}
+    .port-field label{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+    .port-btn{width:100%;padding:12px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;color:var(--text3);transition:border-color .2s}
+    .port-btn.selected{color:var(--text);font-weight:600}
+    .port-btn:hover{border-color:var(--blue)}
+    .port-btn .arrow{font-size:9px;transition:transform .2s}
+    .port-btn .arrow.open{transform:rotate(180deg)}
+    .dropdown{position:absolute;top:100%;left:0;right:0;margin-top:4px;background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);box-shadow:0 20px 60px rgba(0,0,0,.15);z-index:1000;max-height:340px;display:flex;flex-direction:column;overflow:hidden}
+    .dropdown-search{padding:10px 12px;border-bottom:1px solid #f1f5f9}
+    .dropdown-search input{width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;outline:none;direction:ltr;text-align:left}
+    .dropdown-search input:focus{border-color:var(--blue)}
+    .dropdown-list{overflow-y:auto;max-height:280px}
+    .dropdown-group{padding:7px 14px 3px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);background:#f8fafc;position:sticky;top:0}
+    .dropdown-item{width:100%;padding:9px 14px;background:transparent;border:none;border-left:3px solid transparent;font-size:14px;font-family:inherit;cursor:pointer;text-align:left;display:flex;justify-content:space-between;color:var(--text);transition:background .1s}
+    .dropdown-item:hover{background:#f8fafc}
+    .dropdown-item.active{background:var(--blue-bg);border-left-color:var(--blue);font-weight:600}
+    .dropdown-item .code{font-size:11px;color:var(--text3);font-family:monospace}
+    .search-arrow{display:flex;align-items:center;padding-bottom:4px;font-size:20px;color:#cbd5e1}
+    .search-btn{padding:12px 30px;background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:opacity .2s}
+    .search-btn:disabled{background:#cbd5e1;cursor:not-allowed}
+    .clear-search{padding:12px 16px;background:var(--card);border:1.5px solid #ef4444;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;color:#ef4444;white-space:nowrap}
+    .clear-search:hover{background:#fef2f2}
+    .carrier-row{display:flex;gap:6px;padding-top:12px;border-top:1px solid #f1f5f9;margin-top:14px;width:100%}
+    .carrier-btn{padding:10px 20px;border-radius:10px;border:1.5px solid var(--border);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;flex:1;transition:all .15s;background:var(--card);color:var(--text2)}
+    .carrier-btn:hover{border-color:var(--blue);background:#f8fafc}
+    .carrier-btn.msc-active{border-color:var(--msc);background:var(--msc-bg);color:var(--msc)}
+    .carrier-btn.cma-active{border-color:var(--cma);background:var(--cma-bg);color:var(--cma)}
+    .error{background:#fef2f2;border:1px solid #fecaca;border-radius:var(--radius);padding:14px 18px;margin-bottom:20px;color:#991b1b;font-size:14px}
+    .filters{margin-bottom:14px}
+    .filter-row{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+    .filter-label{font-size:12px;color:var(--text3);font-weight:600;margin-right:4px}
+    .fbtn{padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);color:var(--text3);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px}
+    .fbtn.active{border-color:var(--blue);background:var(--blue-bg);color:var(--blue)}
+    .fbtn.clear{border-color:#ef4444;color:#ef4444}.fbtn.clear:hover{background:#fef2f2}
+    .fdot{width:7px;height:7px;border-radius:50%;display:inline-block}
+    .fdot.direct{background:var(--blue)}.fdot.ts{background:var(--orange)}
+    .filter-legend{margin-top:8px;font-size:12px;color:var(--text3)}
+    .toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+    .tbtn{padding:8px 16px;border-radius:8px;border:1.5px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;transition:all .15s}
+    .tbtn.green{border-color:var(--green);background:#f0fdf4;color:var(--green)}.tbtn.green:hover{background:var(--green);color:#fff}
+    .tbtn.red{border-color:#ef4444;background:#fef2f2;color:#ef4444}.tbtn.red:hover{background:#ef4444;color:#fff}
+    .saved-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px}
+    .results{display:flex;flex-direction:column;gap:12px}
+    .card{background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;transition:box-shadow .2s}
+    .card.expanded{box-shadow:0 8px 30px rgba(0,0,0,.08)}
+    .card.saved-card{border-left:3px solid var(--green)}
+    .card-header{padding:18px 22px;cursor:pointer;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+    .card-header:hover{background:#fafbfc}
+    .card-left{display:flex;align-items:center;gap:14px;min-width:200px}
+    .card-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+    .card-icon.direct{background:linear-gradient(135deg,#dbeafe,#bfdbfe)}
+    .card-icon.ts{background:linear-gradient(135deg,#fef3c7,#fde68a)}
+    .card-vessel{font-size:16px;font-weight:700;color:var(--text)}
+    .card-meta{font-size:12px;color:var(--text3);margin-top:2px}
+    .carrier-tag{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;margin-right:4px}
+    .carrier-tag.msc{background:#fef3c7;color:#92400e}
+    .carrier-tag.cma{background:#fecdd3;color:#9f1239}
+    .card-right{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+    .date-col{text-align:center}
+    .date-label{font-size:10px;color:var(--text3);font-weight:600;letter-spacing:.05em}
+    .date-val{font-size:15px;font-weight:600;color:var(--text);margin-top:1px}
+    .tt-badge{padding:6px 14px;border-radius:20px;font-size:14px;font-weight:700}
+    .tt-badge.direct{background:var(--blue-bg);border:1px solid var(--blue-border);color:var(--blue)}
+    .tt-badge.ts{background:var(--orange-bg);border:1px solid var(--orange-border);color:#d97706}
+    .ts-tag{padding:4px 10px;border-radius:6px;background:#fef3c7;font-size:12px;font-weight:600;color:#92400e}
+    .save-cb{width:20px;height:20px;cursor:pointer;accent-color:var(--green);flex-shrink:0}
+    .expand-arrow{font-size:11px;color:var(--text3);transition:transform .2s}
+    .expand-arrow.open{transform:rotate(180deg)}
+    .card-body{border-top:1px solid #f1f5f9;padding:20px 24px;background:#fafbfc}
+    .leg{margin-bottom:16px}.leg:last-child{margin-bottom:0}
+    .leg-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+    .leg-title.first{color:var(--blue)}.leg-title.connecting{color:#d97706}.leg-title.arrival{color:var(--green)}
+    .leg-vessel{font-size:15px;font-weight:600;color:var(--text);display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:5px}
+    .leg-voyage{font-size:12px;color:var(--text3);font-family:monospace}
+    .leg-service-tag{font-size:12px;padding:2px 8px;background:#f1f5f9;border-radius:4px;color:var(--text2)}
+    .leg-route{font-size:14px;color:var(--text2);margin-bottom:4px}
+    .leg-dates{font-size:13px;color:var(--text3)}
+    .port-calls{margin-top:10px;margin-left:14px;border-left:2px solid var(--border);padding-left:16px}
+    .port-call{font-size:13px;color:var(--text3);margin-bottom:5px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+    .port-call .dot{color:#cbd5e1;font-size:8px}
+    .port-call .pc-name{font-weight:600;color:var(--text2)}
+    .port-call .pc-code{font-family:monospace;font-size:11px;color:var(--text3)}
+    .port-call .pc-date{font-size:12px;color:var(--text3)}
+    .co2{margin-top:12px;font-size:12px;color:var(--text3)}
+    .show-more{text-align:center;margin-top:16px}
+    .show-more button{padding:10px 28px;background:var(--card);border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-weight:600;color:var(--blue);cursor:pointer;font-family:inherit}
+    .timestamp{margin-top:18px;text-align:center;font-size:11px;color:var(--text3)}
+    .empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+    .empty-state .icon{font-size:52px;margin-bottom:14px}
+    .empty-state .title{font-size:17px;font-weight:500}
+    .empty-state .sub{font-size:14px;margin-top:5px}
+    .loading{text-align:center;padding:50px 20px}
+    .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .pm-float{position:fixed;bottom:16px;right:16px;z-index:900}
+    .pm-toggle{width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--border);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+    .pm-toggle:hover{background:#f8fafc}
+    .pm-panel{position:fixed;bottom:60px;right:16px;width:340px;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);padding:16px;z-index:901;display:none}
+    .pm-panel.open{display:block}
+    .pm-panel h3{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px}
+    .pm-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+    .pm-row input,.pm-row select{padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none;direction:ltr;text-align:left}
+    .pm-row input:focus{border-color:var(--blue)}
+    .pm-add{padding:6px 12px;border:none;border-radius:6px;background:var(--blue);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+    .cma-detail{font-size:13px;color:var(--text2);line-height:1.6}
+    .cma-detail strong{color:var(--text)}
+    @media(max-width:640px){.search-row{flex-direction:column}.search-arrow{display:none}.port-field{min-width:100%}.search-btn{width:100%}.card-header{padding:14px 16px}.card-body{padding:16px 18px}.pm-panel{width:calc(100% - 32px);right:16px}.carrier-row{flex-direction:column}}
+  </style>
+</head>
+<body>
+<div class="container" id="app"></div>
+<div class="pm-float">
+  <button class="pm-toggle" onclick="togglePM()" title="Manage ports">⚙️</button>
+  <div class="pm-panel" id="pmPanel">
+    <h3>⚙️ Add Custom Port</h3>
+    <div class="pm-row">
+      <input id="pm-name" placeholder="Name" style="flex:1;min-width:80px"/>
+      <input id="pm-id" placeholder="MSC ID" type="number" style="width:60px"/>
+      <input id="pm-code" placeholder="LOCODE" maxlength="5" style="width:70px"/>
+    </div>
+    <div class="pm-row">
+      <select id="pm-region" style="flex:1"><option>China</option><option>East Asia</option><option>Southeast Asia</option><option>South Asia</option><option>Middle East</option><option>Brasil</option><option>South America</option><option>Europe</option><option>Africa</option></select>
+      <button class="pm-add" onclick="addPort()">+ Add</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BUILTIN_PORTS=[
+{region:"China",ports:[
+{id:441,name:"Ningbo",code:"CNNGB"},{id:444,name:"Shanghai",code:"CNSHA"},{id:446,name:"Qingdao",code:"CNTAO"},{id:448,name:"Xiamen",code:"CNXMN"},{id:2,name:"Yantian",code:"CNYTN"},{id:30,name:"Shekou",code:"CNSHK"},{id:900,name:"Nansha",code:"CNNSA"},{id:343,name:"Hong Kong",code:"HKHKG"},{id:438,name:"Fuzhou",code:"CNFOC"},{id:463,name:"Dalian",code:"CNDLC"},{id:1298,name:"Tianjin Xingang",code:"CNTSN"},{id:440,name:"Lianyungang",code:"CNLYG"},
+{id:9001,name:"Wenzhou",code:"CNWNZ"},{id:9002,name:"Taicang",code:"CNTAC"},{id:9003,name:"Nanjing",code:"CNNJG"},{id:9004,name:"Zhanjiang",code:"CNZJG"},{id:9005,name:"Quanzhou",code:"CNQZJ"},{id:9006,name:"Jiangmen",code:"CNJMN"},{id:9007,name:"Zhongshan",code:"CNZSN"}
+]},
+{region:"East Asia",ports:[
+{id:95,name:"Kaohsiung",code:"TWKHH"},{id:274,name:"Busan",code:"KRPUS"},{id:279,name:"Tomakomai",code:"JPTMK"},{id:281,name:"Matsuyama",code:"JPMYJ"},{id:282,name:"Nagoya",code:"JPNGO"},
+{id:9010,name:"Keelung",code:"TWKEL"},{id:9011,name:"Taichung",code:"TWTXG"},{id:9012,name:"Tokyo",code:"JPTYO"},{id:9013,name:"Yokohama",code:"JPYOK"},{id:9014,name:"Kobe",code:"JPUKB"},{id:9015,name:"Osaka",code:"JPOSA"},{id:9016,name:"Incheon",code:"KRINC"},{id:9017,name:"Kwangyang",code:"KRKWG"},{id:9018,name:"Hakata",code:"JPHKT"}
+]},
+{region:"Southeast Asia",ports:[
+{id:122,name:"Singapore",code:"SGSIN"},{id:221,name:"Port Klang",code:"MYPKG"},{id:220,name:"Pasir Gudang",code:"MYPGU"},{id:1292,name:"Vung Tau",code:"VNVUT"},{id:51,name:"Haiphong",code:"VNHPH"},{id:336,name:"Jakarta",code:"IDJKT"},{id:328,name:"Surabaya",code:"IDSUB"},
+{id:9020,name:"Tanjung Pelepas",code:"MYTPP"},{id:9021,name:"Laem Chabang",code:"THLCH"},{id:9022,name:"Ho Chi Minh",code:"VNSGN"},{id:9023,name:"Manila",code:"PHMNN"},{id:9024,name:"Cebu",code:"PHCEB"},{id:9025,name:"Bangkok",code:"THBKK"},{id:9026,name:"Semarang",code:"IDSRG"},{id:9027,name:"Belawan",code:"IDBLW"},{id:9028,name:"Penang",code:"MYPEN"},{id:9029,name:"Da Nang",code:"VNDAN"},{id:9030,name:"Cai Mep",code:"VNCMT"}
+]},
+{region:"South Asia",ports:[
+{id:252,name:"Colombo",code:"LKCMB"},{id:311,name:"Tuticorin",code:"INTUT"},{id:1516,name:"Ennore",code:"INENO"},{id:16,name:"Mundra",code:"INMUN"},{id:1362,name:"Hazira",code:"INHZA"},
+{id:9040,name:"Nhava Sheva",code:"INNSA"},{id:9041,name:"Chennai",code:"INMAA"},{id:9042,name:"Pipavav",code:"INPAV"},{id:9043,name:"Cochin",code:"INCOK"},{id:9044,name:"Kolkata",code:"INCCU"},{id:9045,name:"Visakhapatnam",code:"INVTZ"},{id:9046,name:"Karachi",code:"PKKHI"},{id:9047,name:"Chittagong",code:"BDCGP"},{id:9048,name:"Krishnapatnam",code:"INKRI"}
+]},
+{region:"Middle East",ports:[
+{id:9050,name:"Jebel Ali",code:"AEJEA"},{id:9051,name:"Jeddah",code:"SAJED"},{id:9052,name:"King Abdullah Port",code:"SAKAC"},{id:9053,name:"Salalah",code:"OMSLL"},{id:9054,name:"Dammam",code:"SADMM"},{id:9055,name:"Sohar",code:"OMSOH"},{id:9056,name:"Abu Dhabi",code:"AEAUH"},{id:9057,name:"Hamad Port",code:"QAHAM"},{id:9058,name:"Aqaba",code:"JOAQJ"}
+]},
+{region:"Brasil",ports:[
+{id:475,name:"Santos",code:"BRSSZ"},{id:1032,name:"Navegantes",code:"BRNVT"},{id:479,name:"Itajaí",code:"BRITJ"},{id:480,name:"Paranaguá",code:"BRPNG"},{id:1281,name:"Itapoá",code:"BRIOA"},{id:470,name:"Rio Grande",code:"BRRIG"},{id:471,name:"Rio de Janeiro",code:"BRRIO"},{id:473,name:"Salvador",code:"BRSSA"},{id:19,name:"Suape",code:"BRSUA"},{id:332,name:"Pecém",code:"BRPEC"},{id:476,name:"Vitória",code:"BRVIX"},{id:1088,name:"Manaus",code:"BRMAO"},
+{id:9060,name:"São Francisco do Sul",code:"BRSFS"},{id:9061,name:"Imbituba",code:"BRITB"},{id:9062,name:"Itaguaí",code:"BRITG"},{id:9063,name:"Fortaleza",code:"BRFOR"},{id:9064,name:"Belém",code:"BRBEL"},{id:9065,name:"Vila do Conde",code:"BRVDC"},{id:9066,name:"São Luís",code:"BRSLZ"}
+]},
+{region:"South America",ports:[
+{id:512,name:"Buenos Aires",code:"ARBUE"},
+{id:9070,name:"Montevideo",code:"UYMVD"},{id:9071,name:"San Antonio",code:"CLSAN"},{id:9072,name:"Valparaíso",code:"CLVAP"},{id:9073,name:"Callao",code:"PECLL"},{id:9074,name:"Cartagena",code:"COCTG"},{id:9075,name:"Guayaquil",code:"ECGYE"},{id:9076,name:"Buenaventura",code:"COBUN"},{id:9077,name:"Manzanillo PA",code:"PAMIT"},{id:9078,name:"Zarate",code:"ARZAE"},{id:9079,name:"Rosario",code:"ARROS"},{id:9080,name:"San Vicente",code:"CLSVE"},{id:9081,name:"Iquique",code:"CLIQQ"}
+]},
+{region:"Europe",ports:[
+{id:401,name:"Valencia",code:"ESVLC"},{id:377,name:"Le Havre",code:"FRLEH"},{id:300,name:"Genoa",code:"ITGOA"},{id:1466,name:"Vado Ligure",code:"ITVDL"},{id:429,name:"Bremerhaven",code:"DEBRV"},{id:481,name:"Antwerp",code:"BEANR"},{id:149,name:"Leixões",code:"PTLEI"},{id:319,name:"Haifa",code:"ILHFA"},
+{id:9090,name:"Rotterdam",code:"NLRTM"},{id:9091,name:"Hamburg",code:"DEHAM"},{id:9092,name:"Felixstowe",code:"GBFXT"},{id:9093,name:"Barcelona",code:"ESBCN"},{id:9094,name:"Algeciras",code:"ESALG"},{id:9095,name:"Fos-sur-Mer",code:"FRFOS"},{id:9096,name:"Piraeus",code:"GRPIR"},{id:9097,name:"Gioia Tauro",code:"ITGIT"},{id:9098,name:"Malta Freeport",code:"MTMLA"},{id:9099,name:"Sines",code:"PTSNS"},{id:9100,name:"Tanger Med",code:"MATNG"},{id:9101,name:"Lisboa",code:"PTLIS"},{id:9102,name:"London Gateway",code:"GBLGP"},{id:9103,name:"Southampton",code:"GBSOU"},{id:9104,name:"Gdansk",code:"PLGDN"},{id:9105,name:"Gothenburg",code:"SEGOT"},{id:9106,name:"La Spezia",code:"ITLSP"},{id:9107,name:"Napoli",code:"ITNAP"},{id:9108,name:"Livorno",code:"ITLIV"},{id:9109,name:"Koper",code:"SIKOP"},{id:9110,name:"Rijeka",code:"HRRJK"},{id:9111,name:"Constanta",code:"ROCND"},{id:9112,name:"Istanbul",code:"TRIST"},{id:9113,name:"Mersin",code:"TRMER"},{id:9114,name:"Marseille",code:"FRMRS"}
+]},
+{region:"Africa",ports:[
+{id:125,name:"Dakar",code:"SNDKR"},{id:126,name:"Berbera",code:"SOBBO"},{id:127,name:"Mogadishu",code:"SOMGQ"},
+{id:9120,name:"Durban",code:"ZADUR"},{id:9121,name:"Cape Town",code:"ZACPT"},{id:9122,name:"Abidjan",code:"CIABJ"},{id:9123,name:"Lagos/Apapa",code:"NGAPP"},{id:9124,name:"Tema",code:"GHTEM"},{id:9125,name:"Mombasa",code:"KEMBA"},{id:9126,name:"Port Said",code:"EGPSD"},{id:9127,name:"Alexandria",code:"EGALY"},{id:9128,name:"Djibouti",code:"DJJIB"},{id:9129,name:"Dar es Salaam",code:"TZDAR"},{id:9130,name:"Maputo",code:"MZMPM"},{id:9131,name:"Lomé",code:"TGLFW"},{id:9132,name:"Douala",code:"CMDLA"},{id:9133,name:"Pointe-Noire",code:"CGPNR"},{id:9134,name:"Luanda",code:"AOLAD"},{id:9135,name:"Walvis Bay",code:"NAWVB"},{id:9136,name:"Port Elizabeth",code:"ZAPLZ"},{id:9137,name:"Beira",code:"MZBEW"}
+]}
+];
+
+const WORKER="https://msc-proxy.cacatu00007.workers.dev";
+window._customPorts=[];
+function loadCP(){return window._customPorts}
+function getPorts(){
+  const cp=loadCP();if(!cp.length)return BUILTIN_PORTS;
+  const groups=BUILTIN_PORTS.map(g=>({...g,ports:g.ports.map(p=>({...p}))}));
+  cp.forEach(p=>{
+    // Check if a port with the same LOCODE already exists (merge MSC ID)
+    let merged=false;
+    for(const g of groups){
+      const existing=g.ports.find(x=>x.code===p.code);
+      if(existing){existing.id=p.id;if(p.name)existing.name=p.name;merged=true;break}
+    }
+    if(!merged){
+      // Check by ID too (backward compat)
+      const gByRegion=groups.find(x=>x.region===p.region);
+      if(gByRegion){if(!gByRegion.ports.some(x=>x.id===p.id))gByRegion.ports.push(p)}
+      else groups.push({region:p.region||"Other",ports:[p]});
+    }
+  });
+  return groups;
+}
+function allPorts(){return getPorts().flatMap(g=>g.ports)}
+async function fetchCustomPorts(){try{const r=await fetch(WORKER+"/ports");window._customPorts=await r.json();render()}catch(e){}}
+function loadSaved(){try{return JSON.parse(localStorage.getItem("savedSailings")||"[]")}catch(e){return[]}}
+function saveSavedLS(s){localStorage.setItem("savedSailings",JSON.stringify(s))}
+function isSaved(key){return loadSaved().some(s=>s._key===key)}
+function sailKey(route,item){const l=route.RouteScheduleLegDetails||[];const f=l[0]||{};return`MSC_${f.Vessel?.VesselName||""}_${f.DepartureVoyageNo||""}_${route.EstimatedDepartureDate||""}_${route.EstimatedArrivalDate||""}`}
+function cmaKey(s){return`CMA_${s.vessel}_${s.voyageRef}_${s.departureDate}_${s.arrivalDate}`}
+
+// MSC save toggle
+function toggleSave(key,idx){
+  let saved=loadSaved();
+  if(saved.some(s=>s._key===key)){saved=saved.filter(s=>s._key!==key)}
+  else{
+    const{route,item}=window._routes[idx];
+    const legs=route.RouteScheduleLegDetails||[];const f=legs[0]||{};const last=legs[legs.length-1]||{};
+    const isDirect=legs.length===1&&f.SingleLegOnly;
+    const tsLeg=legs.length>1?legs.slice(1).find(l=>l.DeparturePortName):null;
+    const allPC=legs.flatMap(l=>(l.PortCalls||[]).map(p=>({name:p.PortName,code:p.PortCode,arr:p.EstimatedArrivalDate,dep:p.EstimatedDepartureDate,arrH:p.EstimatedArrivalHour,depH:p.EstimatedDepartureHour})));
+    saved.push({_key:key,carrier:"MSC",vessel:f.Vessel?.VesselName||route.VesselName||"TBN",voyage:f.DepartureVoyageNo||"",
+      service:f.MaritimeServiceName||item.Key.MaritimeServiceName||"",
+      origin:item.PortOfLoad||"",originCode:item.PortOfLoadUnCode||"",
+      destination:item.PortOfDischarge||"",destinationCode:item.PortOfDischargeUnCode||"",
+      etd:route.EstimatedDepartureDate,eta:route.EstimatedArrivalDate||last.EstimatedArrivalTime,
+      isDirect,transitTime:route.TotalTransitTime||"",co2:route.CO2FootPrint||"",
+      tsPort:tsLeg?.DeparturePortName||"",tsPortCode:tsLeg?.DeparturePortUNCode||"",
+      tsVessel:tsLeg?.Vessel?.VesselName||"",tsService:tsLeg?.MaritimeServiceName||"",
+      tsEtd:tsLeg?.EstimatedDepartureTime||"",tsEta:tsLeg?.EstimatedArrivalTime||"",
+      portCalls:allPC});
+  }
+  saveSavedLS(saved);render();
+}
+
+// CMA save toggle
+function toggleSaveCma(key,idx){
+  let saved=loadSaved();
+  if(saved.some(s=>s._key===key)){saved=saved.filter(s=>s._key!==key)}
+  else{
+    const s=window._cmaRoutes[idx];
+    saved.push({_key:key,carrier:"CMA CGM",vessel:s.vessel,voyage:s.voyageRef,
+      service:s.serviceCode||s.service,origin:s.origin,originCode:s.originCode,
+      destination:s.destination,destinationCode:s.destinationCode,
+      etd:s.departureDate,eta:s.arrivalDate,isDirect:s.isDirect,
+      transitTime:s.transitTime+"d",co2:s.co2,
+      tsPort:"",tsPortCode:"",tsVessel:"",tsService:"",tsEtd:"",tsEta:"",
+      portCalls:[]});
+  }
+  saveSavedLS(saved);render();
+}
+
+// Port manager
+function togglePM(){document.getElementById("pmPanel").classList.toggle("open")}
+async function addPort(){
+  const name=document.getElementById("pm-name").value.trim();
+  const id=parseInt(document.getElementById("pm-id").value.trim());
+  const code=document.getElementById("pm-code").value.trim().toUpperCase();
+  const region=document.getElementById("pm-region").value;
+  if(!name||!id||!code)return alert("Fill name, MSC ID and LOCODE.");
+  // Allow if same LOCODE (updating MSC ID), block if same ID but different LOCODE
+  const existingById=allPorts().find(p=>p.id===id);
+  if(existingById&&existingById.code!==code)return alert("MSC ID "+id+" already used by "+existingById.name+" ("+existingById.code+").");
+  const existingByCode=allPorts().find(p=>p.code===code);
+  const isUpdate=!!existingByCode;
+  const pwd=prompt(isUpdate?`Update MSC ID for ${existingByCode.name} (${code})?\nEnter password:`:"Enter password:");
+  if(!pwd)return;
+  try{
+    const r=await fetch(WORKER+"/ports",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,id,code,region,password:pwd})});
+    const d=await r.json();
+    if(d.error)return alert(d.error);
+    window._customPorts=d.ports;
+    document.getElementById("pm-name").value="";document.getElementById("pm-id").value="";document.getElementById("pm-code").value="";
+    render();alert(isUpdate?`${name} (${code}) — MSC ID updated to ${id}!`:`${name} added to ${region}!`);
+    document.getElementById("pmPanel").classList.remove("open");
+  }catch(e){alert("Failed to save.")}
+}
+
+let S={from:null,to:null,fo:false,to2:false,fs:"",ts:"",loading:false,err:null,res:null,cmaRes:null,sf:"ALL",mx:5,_cur:null,carrier:"MSC"};
+window._routes=[];
+window._cmaRoutes=[];
+const fp=id=>allPorts().find(p=>p.id===id);
+const esc=s=>{const d=document.createElement("div");d.textContent=s;return d.innerHTML};
+const M=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MPT=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+function fd(d){if(!d)return"—";const t=new Date(d);if(isNaN(t))return String(d);return`${String(t.getDate()).padStart(2,"0")}/${M[t.getMonth()]}/${t.getFullYear()}`}
+function fdt(d){if(!d)return"—";const t=new Date(d);if(isNaN(t))return String(d);return`${String(t.getDate()).padStart(2,"0")}/${M[t.getMonth()]}/${t.getFullYear()} ${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}`}
+function parseAnyDate(d){
+  if(!d)return null;let t=new Date(d);if(!isNaN(t))return t;
+  const s=String(d).replace(/(\d+)(st|nd|rd|th)/,"$1");
+  t=new Date(s);if(!isNaN(t))return t;
+  const m2=s.match(/(\d+)\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+(\d{4})/i);
+  if(m2)return new Date(`${m2[2]} ${m2[1]}, ${m2[3]}`);
+  return null;
+}
+function fdpt(d){if(!d)return"";const t=parseAnyDate(d);if(!t)return"";return`${t.getDate()}-${MPT[t.getMonth()]}.`}
+function tt(a,b){if(!a||!b)return"—";return Math.round((new Date(b)-new Date(a))/864e5)}
+function allSvcs(data){const m=new Map();for(const i of data){const s=i.Key.MaritimeServiceName,dr=i.Key.IsDirectRoute;if(!m.has(s))m.set(s,{name:s,direct:dr,count:0});m.get(s).count+=i.Routes.length;for(const r of i.Routes)for(const l of(r.RouteScheduleLegDetails||[]))if(l.MaritimeServiceName&&!m.has(l.MaritimeServiceName))m.set(l.MaritimeServiceName,{name:l.MaritimeServiceName,direct:false,count:0})};return[...m.values()].sort((a,b)=>a.name.localeCompare(b.name))}
+function matchSvc(item,route,f){if(f==="ALL")return true;if(item.Key.MaritimeServiceName===f)return true;for(const l of(route.RouteScheduleLegDetails||[]))if(l.MaritimeServiceName===f)return true;return false}
+
+function handleSearchInput(type,el){
+  const k=type==="from"?"fs":"ts";
+  S[k]=el.value;S._cur=el.selectionStart;render();
+}
+
+function renderDD(type){
+  const sr=type==="from"?S.fs:S.ts,cur=type==="from"?S.from:S.to;
+  const hasSearch=sr.trim().length>0;
+  const fl=getPorts().map(g=>({...g,ports:g.ports.filter(p=>{
+    // If no search text, only show original ports (id < 9000)
+    if(!hasSearch) return p.id<9000;
+    // When searching, show all matching ports
+    return p.name.toLowerCase().includes(sr.toLowerCase())||p.code.toLowerCase().includes(sr.toLowerCase());
+  })})).filter(g=>g.ports.length>0);
+  const ok=type==="from"?"fo":"to2",k=type==="from"?"fs":"ts";
+  return`<div class="dropdown"><div class="dropdown-search"><input id="dd-input" placeholder="Search port..." value="${esc(sr)}" oninput="handleSearchInput('${type}',this)"/></div><div class="dropdown-list">${fl.map(g=>`<div class="dropdown-group">${esc(g.region)}</div>${g.ports.map(p=>`<button class="dropdown-item ${p.id===cur?'active':''}" onclick="S.${type}=${p.id};S.${ok}=false;S.${k}='';render()"><span>${esc(p.name)}</span><span class="code">${esc(p.code)}</span></button>`).join("")}`).join("")}</div></div>`;
+}
+
+// === MSC CARD ===
+function renderCard(route,item,idx){
+  const legs=route.RouteScheduleLegDetails||[];const f=legs[0]||{};const isDirect=legs.length===1&&f.SingleLegOnly;
+  const vessel=f.Vessel?.VesselName||route.VesselName||"TBN";const voyage=f.DepartureVoyageNo||"";
+  const service=f.MaritimeServiceName||item.Key.MaritimeServiceName||"";
+  const etd=route.EstimatedDepartureDate,last=legs[legs.length-1]||{};
+  const eta=route.EstimatedArrivalDate||last.EstimatedArrivalTime;const days=tt(etd,eta);
+  const tsLeg=legs.length>1?legs.slice(1).find(l=>l.DeparturePortName):null;
+  const id="c"+idx;const key=sailKey(route,item);const saved=isSaved(key);
+
+  let lhtml=legs.map((l,li)=>{
+    let title="";
+    if(legs.length>1){if(li===0)title=`<div class="leg-title first">🚢 1st Vessel</div>`;else if(l.LastLeg&&!l.DeparturePortName)title=`<div class="leg-title arrival">📍 Arrival</div>`;else title=`<div class="leg-title connecting">🔄 ${li+1}° Vessel — ${esc(l.MaritimeServiceName||"Connecting")}</div>`}
+    let vl="";
+    if(l.DeparturePortName){
+      if(li===0){vl=`<div class="leg-vessel"><span>${esc(l.Vessel?.VesselName||vessel)}</span><span class="leg-voyage">${esc(l.DepartureVoyageNo||"")}</span>${l.MaritimeServiceName?`<span class="leg-service-tag">${esc(l.MaritimeServiceName)}</span>`:""}</div><div class="leg-route">${esc(l.DeparturePortName)} (${esc(l.DeparturePortUNCode||"")}) → ${l.ArrivalPortName?`${esc(l.ArrivalPortName)} (${esc(l.ArrivalPortUNCode||"")})`:""}</div>`}
+      else{vl=`<div class="leg-vessel"><span>${esc(l.Vessel?.VesselName||"TBN")}</span><span class="leg-voyage">${esc(l.DepartureVoyageNo||"")}</span>${l.MaritimeServiceName?`<span class="leg-service-tag">${esc(l.MaritimeServiceName)}</span>`:""}</div><div class="leg-route">${esc(l.DeparturePortName)} (${esc(l.DeparturePortUNCode||"")}) → ${l.ArrivalPortName?`${esc(l.ArrivalPortName)} (${esc(l.ArrivalPortUNCode||"")})`:""}</div><div class="leg-dates">ETD: ${fdt(l.EstimatedDepartureTime)}${l.EstimatedArrivalTime?` — ETA: ${fdt(l.EstimatedArrivalTime)}`:""}</div>`}
+    }else if(l.ArrivalPortName){vl=`<div class="leg-route">→ ${esc(l.ArrivalPortName)} (${esc(l.ArrivalPortUNCode||"")}) — ETA: ${fdt(l.EstimatedArrivalTime)}</div>`}
+    let pc="";
+    if(l.PortCalls&&l.PortCalls.length>0){pc=`<div class="port-calls">${l.PortCalls.map(p=>{let di="";if(p.EstimatedArrivalDate)di+=`ETA ${esc(p.EstimatedArrivalDate)}${p.EstimatedArrivalHour?" "+esc(p.EstimatedArrivalHour):""}`;if(p.EstimatedDepartureDate)di+=` → ETD ${esc(p.EstimatedDepartureDate)}${p.EstimatedDepartureHour?" "+esc(p.EstimatedDepartureHour):""}`;return`<div class="port-call"><span class="dot">●</span><span class="pc-name">${esc(p.PortName)}</span><span class="pc-code">(${esc(p.PortCode)})</span><span class="pc-date">${di}</span></div>`}).join("")}</div>`}
+    return`<div class="leg">${title}${vl}${pc}</div>`;
+  }).join("");
+
+  return`<div class="card ${saved?'saved-card':''}" id="${id}"><div class="card-header" onclick="tog('${id}')"><div class="card-left"><input type="checkbox" class="save-cb" ${saved?'checked':''} onclick="event.stopPropagation();toggleSave('${esc(key)}',${idx})" title="${saved?'Remove':'Save'}"/><div class="card-icon ${isDirect?'direct':'ts'}">${isDirect?'🚢':'⛴️'}</div><div><div class="card-vessel"><span class="carrier-tag msc">MSC</span>${esc(vessel)}</div><div class="card-meta">${esc(voyage)} · ${esc(service)}</div></div></div><div class="card-right"><div class="date-col"><div class="date-label">ETD</div><div class="date-val">${fd(etd)}</div></div><span class="card-arrow-icon">→</span><div class="date-col"><div class="date-label">ETA</div><div class="date-val">${fd(eta)}</div></div><span class="tt-badge ${isDirect?'direct':'ts'}">${days}d</span>${!isDirect&&tsLeg?`<span class="ts-tag">T/S ${esc(tsLeg.DeparturePortName)}</span>`:""}<span class="expand-arrow" id="a-${id}">▼</span></div></div><div class="card-body" id="b-${id}" style="display:none">${lhtml}${route.CO2FootPrint?`<div class="co2">CO₂: ${esc(route.CO2FootPrint)}</div>`:""}</div></div>`;
+}
+
+// === CMA CGM CARD ===
+function renderCmaCard(s,idx){
+  const id="cma"+idx;const key=cmaKey(s);const saved=isSaved(key);
+  const days=s.transitTime||"—";
+  return`<div class="card ${saved?'saved-card':''}" id="${id}"><div class="card-header" onclick="tog('${id}')"><div class="card-left"><input type="checkbox" class="save-cb" ${saved?'checked':''} onclick="event.stopPropagation();toggleSaveCma('${esc(key)}',${idx})" title="${saved?'Remove':'Save'}"/><div class="card-icon ${s.isDirect?'direct':'ts'}">${s.isDirect?'🚢':'⛴️'}</div><div><div class="card-vessel"><span class="carrier-tag cma">CMA</span>${esc(s.vessel)}</div><div class="card-meta">${esc(s.voyageRef)} · ${esc(s.serviceCode||s.service)}</div></div></div><div class="card-right"><div class="date-col"><div class="date-label">ETD</div><div class="date-val">${fd(s.departureDate)}</div></div><span class="card-arrow-icon">→</span><div class="date-col"><div class="date-label">ETA</div><div class="date-val">${fd(s.arrivalDate)}</div></div><span class="tt-badge ${s.isDirect?'direct':'ts'}">${days}d</span><span class="expand-arrow" id="a-${id}">▼</span></div></div><div class="card-body" id="b-${id}" style="display:none"><div class="cma-detail"><strong>Vessel:</strong> ${esc(s.vessel)}<br><strong>Service:</strong> ${esc(s.service)}<br><strong>Voyage:</strong> ${esc(s.voyageRef)}<br><strong>Departure:</strong> ${esc(s.departureDateDisplay||fd(s.departureDate))}<br><strong>Arrival:</strong> ${esc(s.arrivalDateDisplay||fd(s.arrivalDate))}<br><strong>Transit:</strong> ${days} days · <strong>Type:</strong> ${s.isDirect?"Direct":"Transshipment"}${s.co2?`<br><strong>CO₂:</strong> ${esc(s.co2)} t/TEU`:""}<br><strong>Route:</strong> ${esc(s.origin)} (${esc(s.originCode)}) → ${esc(s.destination)} (${esc(s.destinationCode)})${s.portCutoff?`<br><strong>Port Cut-off:</strong> ${esc(s.portCutoff)}`:""}</div></div></div>`;
+}
+
+function tog(id){const b=document.getElementById("b-"+id),a=document.getElementById("a-"+id),c=document.getElementById(id);if(b.style.display==="none"){b.style.display="block";a.classList.add("open");c.classList.add("expanded")}else{b.style.display="none";a.classList.remove("open");c.classList.remove("expanded")}}
+
+// === EXCEL EXPORT ===
+async function exportExcel(){
+  const saved=loadSaved();if(!saved.length)return alert("No saved sailings.");
+  const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet("NEXT VESSELS");
+  const blue="FF215E99",yellow="FFFFFF00",black="FF000000",white="FFFFFFFF";
+  const hf={name:"Arial",size:11,bold:true,color:{argb:white}};
+  const df={name:"Arial",size:11};
+  const hFill={type:"pattern",pattern:"solid",fgColor:{argb:blue}};
+  const yFill={type:"pattern",pattern:"solid",fgColor:{argb:yellow}};
+  const bFill={type:"pattern",pattern:"solid",fgColor:{argb:black}};
+  const ct={horizontal:"center",vertical:"middle"};
+  const directs=saved.filter(s=>s.isDirect),trans=saved.filter(s=>!s.isDirect);
+
+  function getPortCols(items){
+    const etdMap=new Map(),etaMap=new Map();
+    items.forEach(s=>{
+      if(s.originCode&&!etdMap.has(s.originCode))etdMap.set(s.originCode,s.origin);
+      if(s.destinationCode&&!etaMap.has(s.destinationCode))etaMap.set(s.destinationCode,s.destination);
+    });
+    const oPres=new Set([...etdMap.keys()].map(c=>c.substring(0,2)));
+    const dPres=new Set([...etaMap.keys()].map(c=>c.substring(0,2)));
+    items.forEach(s=>{
+      (s.portCalls||[]).forEach(pc=>{
+        if(!pc.code)return;const pre=pc.code.substring(0,2);
+        if(oPres.has(pre)&&!etdMap.has(pc.code)&&etdMap.size<2)etdMap.set(pc.code,pc.name);
+        if(dPres.has(pre)&&!etaMap.has(pc.code)&&etaMap.size<2)etaMap.set(pc.code,pc.name);
+      });
+    });
+    function sortByDate(portEntries,type){
+      return portEntries.sort((a,b)=>{
+        let da=null,db=null;
+        for(const s of items){
+          const va=findPCDate(s,a[0],type);const vb=findPCDate(s,b[0],type);
+          if(va&&!da){const p=parseAnyDate(va);if(p)da=p}
+          if(vb&&!db){const p=parseAnyDate(vb);if(p)db=p}
+          if(da&&db)break;
+        }
+        if(!da)return 1;if(!db)return-1;return da-db;
+      });
+    }
+    return{etdPorts:sortByDate([...etdMap.entries()].slice(0,2),"etd"),etaPorts:sortByDate([...etaMap.entries()].slice(0,2),"eta")};
+  }
+
+  function findPCDate(s,code,type){
+    if(type==="etd"&&s.originCode===code)return s.etd;
+    if(type==="eta"&&s.destinationCode===code)return s.eta;
+    const pc=(s.portCalls||[]).find(p=>p.code===code);
+    if(pc){return type==="etd"?(pc.dep||pc.arr||""):(pc.arr||pc.dep||"")}
+    const allP=allPorts();const portInfo=allP.find(p=>p.code===code);
+    if(portInfo){const pcByName=(s.portCalls||[]).find(p=>p.name&&p.name.toLowerCase().includes(portInfo.name.toLowerCase()));if(pcByName)return type==="etd"?(pcByName.dep||pcByName.arr||""):(pcByName.arr||pcByName.dep||"")}
+    return"";
+  }
+
+  ws.getCell("A1").value="NEXT VESSELS";ws.getCell("A1").font={name:"Arial",size:14,bold:true};
+  let row=3;
+
+  function writeSection(items,label){
+    if(!items.length)return;
+    const{etdPorts,etaPorts}=getPortCols(items);
+    const totalCols=2+etdPorts.length+etaPorts.length; // +1 for carrier column
+    ws.mergeCells(row,1,row,totalCols);
+    ws.getCell(row,1).value=label;ws.getCell(row,1).font={...hf,size:14};ws.getCell(row,1).fill=bFill;ws.getCell(row,1).alignment=ct;
+    for(let c=1;c<=totalCols;c++)ws.getCell(row,c).fill=bFill;
+    row++;
+    // Services
+    const carriers=[...new Set(items.map(s=>s.carrier||"MSC"))];
+    const svcStr=items.map(s=>`${s.carrier||"MSC"} (${s.service})`);
+    const uniqSvcs=[...new Set(svcStr)].join(", ");
+    ws.getCell(row,1).value="CARRIERS / SERVICES";ws.getCell(row,1).font=hf;ws.getCell(row,1).fill=hFill;ws.getCell(row,1).alignment=ct;
+    ws.mergeCells(row,2,row,totalCols);ws.getCell(row,2).value=uniqSvcs;ws.getCell(row,2).font={name:"Arial",size:11,bold:true};ws.getCell(row,2).fill=yFill;ws.getCell(row,2).alignment=ct;
+    row++;
+    // Headers
+    let col=1;
+    ws.getCell(row,col).value="CARRIER";ws.getCell(row,col).font=hf;ws.getCell(row,col).fill=hFill;ws.getCell(row,col).alignment=ct;col++;
+    ws.getCell(row,col).value="VESSEL";ws.getCell(row,col).font=hf;ws.getCell(row,col).fill=hFill;ws.getCell(row,col).alignment=ct;col++;
+    etdPorts.forEach(([code,name])=>{ws.getCell(row,col).value=`ETD ${name}`;ws.getCell(row,col).font=hf;ws.getCell(row,col).fill=hFill;ws.getCell(row,col).alignment=ct;col++});
+    etaPorts.forEach(([code,name])=>{ws.getCell(row,col).value=`ETA ${name}`;ws.getCell(row,col).font=hf;ws.getCell(row,col).fill=hFill;ws.getCell(row,col).alignment=ct;col++});
+    row++;
+    // Data rows
+    items.forEach(s=>{
+      col=1;
+      ws.getCell(row,col).value=s.carrier||"MSC";ws.getCell(row,col).font=df;ws.getCell(row,col).alignment=ct;col++;
+      ws.getCell(row,col).value=`${s.vessel} / ${s.voyage}`;ws.getCell(row,col).font=df;col++;
+      etdPorts.forEach(([code])=>{ws.getCell(row,col).value=fdpt(findPCDate(s,code,"etd"));ws.getCell(row,col).font=df;ws.getCell(row,col).alignment=ct;col++});
+      etaPorts.forEach(([code])=>{ws.getCell(row,col).value=fdpt(findPCDate(s,code,"eta"));ws.getCell(row,col).font=df;ws.getCell(row,col).alignment=ct;col++});
+      row++;
+    });
+    row++;
+  }
+
+  writeSection(directs,"DIRECT");
+  writeSection(trans,"TRANSSHIPMENT");
+
+  ws.columns.forEach(c=>{let max=10;c.eachCell({includeEmpty:false},cell=>{const len=(cell.value||"").toString().length;if(len>max)max=len});c.width=max+4});
+  ws.getColumn(1).width=12;ws.getColumn(2).width=35;
+
+  const buf=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");
+  a.href=url;a.download=`NEXT_VESSELS_${new Date().toISOString().split("T")[0]}.xlsx`;a.click();URL.revokeObjectURL(url);
+}
+
+// === MAIN RENDER ===
+function render(){
+  const f=fp(S.from),t=fp(S.to);const saved=loadSaved();
+  const isMSC=S.carrier==="MSC",isCMA=S.carrier==="CMA";
+  h=`<header><h1>⚓ Next Sailings</h1><p>${isMSC?"MSC":"CMA CGM"} Schedule Search</p></header>`;
+
+  // Search box
+  h+=`<div class="search-box"><div class="search-row"><div class="port-field"><label><span>🚢</span> Origin</label><button class="port-btn ${f?'selected':''}" onclick="S.fo=!S.fo;S.to2=false;render()"><span>${f?`${esc(f.name)} (${esc(f.code)})`:"Select port..."}</span><span class="arrow ${S.fo?'open':''}">▼</span></button>${S.fo?renderDD("from"):""}</div><div class="search-arrow">→</div><div class="port-field"><label><span>📍</span> Destination</label><button class="port-btn ${t?'selected':''}" onclick="S.to2=!S.to2;S.fo=false;render()"><span>${t?`${esc(t.name)} (${esc(t.code)})`:"Select port..."}</span><span class="arrow ${S.to2?'open':''}">▼</span></button>${S.to2?renderDD("to"):""}</div><button class="search-btn" ${!S.from||!S.to||S.loading?'disabled':''} onclick="doSearch()">${S.loading?"Searching...":"Search"}</button>${S.res||S.cmaRes||S.from||S.to?`<button class="clear-search" onclick="S.from=null;S.to=null;S.res=null;S.cmaRes=null;S.err=null;S.sf='ALL';render()">✕ Clear</button>`:""}</div>`;
+
+  // Carrier toggle
+  h+=`<div class="carrier-row"><button class="carrier-btn ${isMSC?'msc-active':''}" onclick="S.carrier='MSC';S.res=null;S.cmaRes=null;S.err=null;S.sf='ALL';S.mx=5;render()">🟡 MSC</button><button class="carrier-btn ${isCMA?'cma-active':''}" onclick="S.carrier='CMA';S.res=null;S.cmaRes=null;S.err=null;S.sf='ALL';S.mx=5;render()">🔴 CMA CGM</button></div></div>`;
+
+  // Saved bar
+  if(saved.length){h+=`<div class="saved-bar"><span style="font-size:14px;font-weight:600;color:var(--green)">📋 ${saved.length} saved</span><button class="tbtn green" onclick="exportExcel()">📥 Export .xlsx</button><button class="tbtn red" onclick="if(confirm('Clear all saved?')){saveSavedLS([]);render()}">🗑️ Clear</button></div>`}
+
+  if(S.err)h+=`<div class="error">${esc(S.err)}</div>`;
+  if(S.loading)h+=`<div class="loading"><div class="spinner"></div><div class="loading-text">Searching ${isMSC?"MSC":"CMA CGM"} schedules...</div></div>`;
+
+  // === MSC RESULTS ===
+  if(isMSC&&S.res&&!S.loading){
+    const data=S.res.Data,svcs=allSvcs(data);
+    const all=[];window._routes=[];
+    for(const i of data)for(const r of i.Routes)if(matchSvc(i,r,S.sf))all.push({route:r,item:i});
+    all.sort((a,b)=>new Date(a.route.EstimatedDepartureDate)-new Date(b.route.EstimatedDepartureDate));
+    window._routes=all;
+    const disp=all.slice(0,S.mx),total=data.flatMap(d=>d.Routes).length;
+
+    h+=`<div class="filters"><div class="filter-row"><span class="filter-label">Service:</span><button class="fbtn ${S.sf==='ALL'?'active':''}" onclick="S.sf='ALL';S.mx=5;render()">All (${total})</button>${svcs.map(s=>`<button class="fbtn ${S.sf===s.name?'active':''}" onclick="S.sf='${esc(s.name)}';S.mx=5;render()"><span class="fdot ${s.direct?'direct':'ts'}"></span>${esc(s.name)}${s.count?` (${s.count})`:""}</button>`).join("")}${S.sf!=="ALL"?`<button class="fbtn clear" onclick="S.sf='ALL';S.mx=5;render()">✕ Clear</button>`:""}</div><div class="filter-legend">${f?esc(f.name):""} → ${t?esc(t.name):""} · <span style="color:var(--blue)">●</span> Direct &nbsp; <span style="color:var(--orange)">●</span> Transshipment</div></div>`;
+    h+=`<div class="toolbar"><span style="font-size:14px;color:var(--text2);font-weight:600">${all.length} sailing${all.length!==1?"s":""}</span><span style="font-size:12px;color:var(--text3)">☑️ Check to save → export</span></div>`;
+    h+=`<div class="results">${disp.map((r,i)=>renderCard(r.route,r.item,i)).join("")}</div>`;
+    if(all.length>S.mx)h+=`<div class="show-more"><button onclick="S.mx+=5;render()">Show more (${all.length-S.mx} remaining)</button></div>`;
+    if(S.res.ResultTimestamp)h+=`<div class="timestamp">${esc(S.res.ResultTimestamp)}</div>`;
+  }
+
+  // === CMA CGM RESULTS ===
+  if(isCMA&&S.cmaRes&&!S.loading){
+    const sailings=S.cmaRes.sailings||[];
+    window._cmaRoutes=sailings;
+    // Service filter
+    const svcSet=new Map();
+    sailings.forEach(s=>{const c=s.serviceCode||s.service;if(!svcSet.has(c))svcSet.set(c,{name:c,count:0,direct:s.isDirect});svcSet.get(c).count++});
+    const svcs=[...svcSet.values()];
+    const filtered=S.sf==="ALL"?sailings:sailings.filter(s=>(s.serviceCode||s.service)===S.sf);
+    const disp=filtered.slice(0,S.mx);
+
+    h+=`<div class="filters"><div class="filter-row"><span class="filter-label">Service:</span><button class="fbtn ${S.sf==='ALL'?'active':''}" onclick="S.sf='ALL';S.mx=5;render()">All (${sailings.length})</button>${svcs.map(s=>`<button class="fbtn ${S.sf===s.name?'active':''}" onclick="S.sf='${esc(s.name)}';S.mx=5;render()"><span class="fdot ${s.direct?'direct':'ts'}"></span>${esc(s.name)} (${s.count})</button>`).join("")}${S.sf!=="ALL"?`<button class="fbtn clear" onclick="S.sf='ALL';S.mx=5;render()">✕ Clear</button>`:""}</div><div class="filter-legend">${f?esc(f.name):""} → ${t?esc(t.name):""} · CMA CGM</div></div>`;
+    h+=`<div class="toolbar"><span style="font-size:14px;color:var(--text2);font-weight:600">${filtered.length} sailing${filtered.length!==1?"s":""}</span><span style="font-size:12px;color:var(--text3)">☑️ Check to save → export</span></div>`;
+    h+=`<div class="results">${disp.map((s,i)=>renderCmaCard(s,sailings.indexOf(s))).join("")}</div>`;
+    if(filtered.length>S.mx)h+=`<div class="show-more"><button onclick="S.mx+=5;render()">Show more (${filtered.length-S.mx} remaining)</button></div>`;
+  }
+
+  // Empty state
+  if(!S.res&&!S.cmaRes&&!S.err&&!S.loading)h+=`<div class="empty-state"><div class="icon">🚢</div><div class="title">Select origin and destination to search</div><div class="sub">Choose MSC or CMA CGM, then search for available sailings</div></div>`;
+  document.getElementById("app").innerHTML=h;
+
+  // Fix cursor position in dropdown search
+  if(S.fo||S.to2){
+    const inp=document.getElementById("dd-input");
+    if(inp){inp.focus();if(S._cur!==null&&S._cur!==undefined){try{inp.setSelectionRange(S._cur,S._cur)}catch(e){}}}
+  }
+}
+
+// === SEARCH ===
+async function doSearch(){
+  if(!S.from||!S.to)return;
+  S.loading=true;S.err=null;S.res=null;S.cmaRes=null;S.sf="ALL";S.mx=5;render();
+  const f=fp(S.from),t=fp(S.to);
+
+  try{
+    if(S.carrier==="MSC"){
+      const r=await fetch(WORKER+`/?fromPortId=${S.from}&toPortId=${S.to}`);
+      const d=await r.json();
+      if(!d.IsSuccess||!d.Data||!Array.isArray(d.Data)||d.Data.length===0) S.err=typeof d.Data==="string"?d.Data:"No results found.";
+      else S.res=d;
+    }else{
+      // CMA CGM
+      if(!f||!t){S.err="Port data not found.";S.loading=false;render();return}
+      const params=new URLSearchParams({pol:f.code,pod:t.code,polName:f.name,podName:t.name,weeks:"5"});
+      const r=await fetch(WORKER+`/cma?${params}`);
+      const d=await r.json();
+      if(d.error) S.err=d.error;
+      else if(!d.sailings||d.sailings.length===0) S.err="No CMA CGM sailings found for this route.";
+      else S.cmaRes=d;
+    }
+  }catch(e){S.err="Failed to connect. Try again."}
+  S.loading=false;render();
+}
+
+document.addEventListener("click",e=>{if(!e.target.closest(".port-field")){if(S.fo||S.to2){S.fo=false;S.to2=false;render()}}});
+render();
+fetchCustomPorts();
+</script>
+</body>
+</html>
