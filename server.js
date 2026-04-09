@@ -444,20 +444,21 @@ app.get("/api/cma-test", async (req, res) => {
   }
   try {
     const formData = {
-      ActualPOLDescription: "SHANGHAI ; CN ; CNSHA",
-      ActualPODDescription: "SANTOS ; BR ; BRSSZ",
+      ActualPOLDescription: polDesc,
+      ActualPODDescription: podDesc,
       ActualPOLType: "Port",
       ActualPODType: "Port",
-      polDescription: "SHANGHAI ; CN ; CNSHA",
-      podDescription: "SANTOS ; BR ; BRSSZ",
+      polDescription: polDesc,
+      podDescription: podDesc,
       IsDeparture: "True",
-      SearchDate: formatCmaSearchDate(new Date()),
-      searchRange: "500",
-    };
+      SearchDate: searchDate,
+      searchRange,
+  };
+    
     const result = await cmaFetch(formData);
     const isDataDomeBlock = result.status === 403
       || (result.body.length < 2000 && /captcha-delivery|Please enable JS/i.test(result.body));
-    const sailings = parseCmaSchedules(result.body, "Shanghai", "Santos", "CNSHA", "BRSSZ");
+    const sailings = parseCmaSchedules(result.body, polName, podName, pol, pod);
     res.json({
       ok: result.ok && !isDataDomeBlock && sailings.length > 0,
       cookieValid: !isDataDomeBlock,
