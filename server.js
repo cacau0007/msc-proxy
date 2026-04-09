@@ -452,7 +452,7 @@ app.get("/api/cma-test", async (req, res) => {
       podDescription: podDesc,
       IsDeparture: "True",
       SearchDate: searchDate,
-      searchRange,
+      searchRange:"500" ,
   };
     
     const result = await cmaFetch(formData);
