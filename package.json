@@ -1,14 +1,7 @@
 {
   "name": "next-sailings",
   "version": "1.0.0",
-  "description": "MSC & CMA CGM Schedule Search",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "exceljs": "^4.4.0",
-    "https-proxy-agent": "^7.0.5"
-  }
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "express": "^4.18.2" }
 }
